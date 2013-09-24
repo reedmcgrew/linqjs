@@ -13,17 +13,14 @@
 		};
 		var next = function(){
 			yieldCalled = false;
-			func(yield, stop);
+			while(!stopCalled && !yieldCalled)
+				func(yield, stop);
 			return yieldCalled;
 		};
 	
 		var enumerate = function enumerate(action, term){
-			if(!stopCalled){
-				next();
-				if(yieldCalled){
-					action(current);
-				}
-			}
+			while(next())
+				action(current);
 			else if(typeof term === 'function'){
 				term();
 			}
@@ -69,8 +66,9 @@
 		var where = function where(func){
 			return linqSeq(function (yield,stop){
 				seq.enumerate(function (item){
-					if(func(item))
+					if(func(item)){
 						yield(item);
+					}
 				}, stop);
 			})			
 		};
