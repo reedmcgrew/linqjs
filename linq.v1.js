@@ -1,5 +1,5 @@
 (function(){
-	
+
 	var seq = function seq(func){
 		var current = undefined;
 		var yieldCalled = false;
@@ -13,14 +13,17 @@
 		};
 		var next = function(){
 			yieldCalled = false;
-			while(!stopCalled && !yieldCalled)
-				func(yield, stop);
+			func(yield, stop);
 			return yieldCalled;
 		};
-	
+
 		var enumerate = function enumerate(action, term){
-			while(next())
-				action(current);
+			if(!stopCalled){
+				next();
+				if(yieldCalled){
+					action(current);
+				}
+			}
 			else if(typeof term === 'function'){
 				term();
 			}
@@ -66,13 +69,12 @@
 		var where = function where(func){
 			return linqSeq(function (yield,stop){
 				seq.enumerate(function (item){
-					if(func(item)){
+					if(func(item))
 						yield(item);
-					}
 				}, stop);
 			})			
 		};
-		
+
 		return {
 			toList: toList,
 			linqSeq: linqSeq,
@@ -86,16 +88,16 @@
 	var linqWrap = function(list){
 		return linq(wrap(list));
 	};
-	
+
 	var generator = function (yield, stop){
-		var i = 0
-		while(i < 5){
-			i = Math.ceil(Math.random() * 5);
+		var i = Math.ceil(Math.random() * 5);
+		if(i < 5)
 			yield(i);
-		}
+		else
+			stop();
 	};
 	var someseq = seq(generator);
-	
+
 	console.log(linq(someseq).toList());
 	console.log(linqSeq(generator).toList());
 	console.log(linqWrap([1,2,3,4]).toList());
