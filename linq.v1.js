@@ -88,26 +88,28 @@
 		return linq(wrap(list));
 	};
 
-	var generator = function (yield, stop){
-		var i = Math.ceil(Math.random() * 5);
-		if(i < 5)
-			yield(i);
-		else
-			stop();
-	};
-	
-	console.log(linq(seq(generator)).toList());
-	console.log(linqSeq(generator).toList());
+	var generator = (function(){
+		var i = 0;
+		return function (yield, stop){
+			if (i < 10)
+				yield(i++);
+			else
+				stop();
+		};
+	});
+
+	console.log(linq(seq(generator())).toList());
+	console.log(linqSeq(generator()).toList());
 	console.log(linqWrap([1,2,3,4]).toList());
 	console.log(linq(wrap([1,2,3,4])).toList());
 
-	console.log("select", linqSeq(generator)
+	console.log("select", linqSeq(generator())
 		.select(function (item) { return item*10; })
 		.toList());
-	console.log("where", linqSeq(generator)
+	console.log("where", linqSeq(generator())
 		.where(function (item) { return item % 3 !== 0; })
 		.toList());
-	console.log("SWS", linqSeq(generator)
+	console.log("SWS", linqSeq(generator())
 		.select(function (item) { return item * 8; })
 		.where(function (item) { return item % 3 !== 0 ; })
 		.select(function (item) { return item / 8; })
