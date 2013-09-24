@@ -1,120 +1,109 @@
 (function(){
-	
-	var seq = function seq(func){
-		var current = undefined;
-		var yieldCalled = false;
+
+
+	var seq = function(generator){
+
 		var stopCalled = false;
-		var yield = function(item){
-			yieldCalled = true;
-			current = item;
-		};
 		var stop = function(){
 			stopCalled = true;
+		}
+		var yield = function(action){
+			return function yielder(item){
+				if(!stopCalled){
+					action(item);
+				}
+				return stopCalled;
+			};
 		};
-		var next = function(){
-			yieldCalled = false;
-			while(!stopCalled && !yieldCalled)
-				func(yield, stop);
-			return yieldCalled;
-		};
-	
-		var enumerate = function enumerate(action, term){
-			while(next())
-				action(current);
-			else if(typeof term === 'function'){
-				term();
-			}
-		};
-		return {
-			enumerate: enumerate
+
+		return function seqWrapper(action, term){
+			var yielder = yield(action);
+			generator(yielder, stop);
 		};
 	};
-	var wrap = function wrap(list){
-		var idx = 0;
-		var enumerate = function (action, term){
-			if(idx < list.length){
-				action(list[idx++]);
-			}
-			else if(typeof term === "function"){
-				term();
-			}
-		};
-		return {
-			enumerate: enumerate
-		};
-	};
-	var linq = function(seq){
-		var toList = function(){
-			var stopCalled = false;
+
+
+	var linq = function linq(seqFunc){
+		var toList = function toList(item){
 			var list = [];
-			while(!stopCalled){
-				seq.enumerate(function (item){
-					list.push(item);
-				}, function(){
-					stopCalled = true;
-				});
-			}
+			seqFunc(function yielder(item){
+				list.push(item);
+			});
 			return list;
 		};
-		var select = function select(func){
-			return linqSeq(function (yield,stop){
-				seq.enumerate(function (item){
-					yield(func(item));
-				}, stop);
-			});
+		var select = function select(transform){
+			return linq(seq(function generate(yield, stop){
+				seqFunc(function yielder(item){
+					yield(transform(item));
+				});
+			}));
 		};
-		var where = function where(func){
-			return linqSeq(function (yield,stop){
-				seq.enumerate(function (item){
-					if(func(item)){
+		var where = function where(filter){
+			return linq(seq(function generate(yield, stop){
+				seqFunc(function yielder(item){
+					if(filter(item))
 						yield(item);
-					}
-				}, stop);
-			})			
+				});
+			}));
 		};
-		
 		return {
 			toList: toList,
-			linqSeq: linqSeq,
 			select: select,
 			where: where
 		};
 	};
-	var linqSeq = function(func){
-		return linq(seq(func));
+
+	var wrap = function wrap(list){
+		var idx = 0;
+		return seq(function listWrapper(yield, stop){
+			while(idx < list.length){
+				yield(list[idx++]);
+			}
+		});
 	};
-	var linqWrap = function(list){
-		return linq(wrap(list));
+
+	var theSeq = function (yield){
+		var i = 0;
+		while(i < 10){
+			yield(i++);
+		}
 	};
-	
-	var generator = function (yield, stop){
-		var i = Math.ceil(Math.random() * 5);
-		if(i < 5)
-			yield(i);
-		else
-			stop();
+	var theSeqStopped = function (yield, stop){
+		var i = 0;
+		while(i < 10){
+			yield(i++);
+			if(i == 5)
+				stop();
+		}
 	};
-	var someseq = seq(generator);
-	
-	console.log(linq(someseq).toList());
-	console.log(linqSeq(generator).toList());
-	console.log(linqWrap([1,2,3,4]).toList());
+
+	console.log(linq(seq(theSeq)).toList());
+	console.log(linq(seq(theSeqStopped)).toList());
 	console.log(linq(wrap([1,2,3,4])).toList());
 
-	console.log("select", linqSeq(generator)
+	console.log("seq S", linq(seq(theSeq))
 		.select(function (item) { return item*10; })
 		.toList());
-	console.log("where", linqSeq(generator)
-		.where(function (item) { return item % 3 !== 0; })
+	console.log("stopped S", linq(seq(theSeqStopped))
+		.select(function (item) { return item*10; })
 		.toList());
-	console.log("SWS", linqSeq(generator)
-		.select(function (item) { return item * 8; })
-		.where(function (item) { return item % 3 !== 0 ; })
-		.select(function (item) { return item / 8; })
+
+	console.log("seq W", linq(seq(theSeq))
+		.where(function (item) { return item % 2 == 0; })
 		.toList());
-	console.log("wrap SWS", linq(wrap([1,2,3,4]))
-		.select(function (item) { return item * 8; })
-		.where(function (item) { return item % 3 !== 0 ; })
-		.select(function (item) { return item / 8; })
+	console.log("stopped W", linq(seq(theSeqStopped))
+		.where(function (item) { return item % 2 == 0; })
 		.toList());
-})()
+
+	console.log("seq SWS", linq(seq(theSeq))
+		.select(function (item) { return item*10; })
+		.where(function (item) { return item % 2 == 0; })
+		.select(function (item) { return item*10; })
+		.toList());
+	console.log("stopped SWS", linq(seq(theSeqStopped))
+		.select(function (item) { return item*10; })
+		.where(function (item) { return item % 2 == 0; })
+		.select(function (item) { return item*10; })
+		.toList());
+
+})();	
