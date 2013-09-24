@@ -77,7 +77,6 @@
 
 		return {
 			toList: toList,
-			linqSeq: linqSeq,
 			select: select,
 			where: where
 		};
@@ -96,9 +95,8 @@
 		else
 			stop();
 	};
-	var someseq = seq(generator);
-
-	console.log(linq(someseq).toList());
+	
+	console.log(linq(seq(generator)).toList());
 	console.log(linqSeq(generator).toList());
 	console.log(linqWrap([1,2,3,4]).toList());
 	console.log(linq(wrap([1,2,3,4])).toList());
